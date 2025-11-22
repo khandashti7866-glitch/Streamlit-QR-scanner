@@ -1,8 +1,8 @@
 import streamlit as st
 from PIL import Image
-from pyzbar.pyzbar import decode
-import cv2
 import numpy as np
+import cv2
+from pyzxing import BarCodeReader
 
 st.set_page_config(page_title="QR & Barcode Scanner", layout="centered")
 st.title("📱 QR & Barcode Scanner")
@@ -11,13 +11,20 @@ st.title("📱 QR & Barcode Scanner")
 if "history" not in st.session_state:
     st.session_state.history = []
 
-def decode_barcode(image):
-    gray = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2GRAY)
-    decoded_objects = decode(gray)
-    results = []
-    for obj in decoded_objects:
-        results.append(f"{obj.type}: {obj.data.decode('utf-8')}")
-    return results
+# Initialize ZXing reader
+reader = BarCodeReader()
+
+def decode_image_with_zxing(image):
+    # Save uploaded PIL image temporarily
+    temp_file = "temp_image.png"
+    image.save(temp_file)
+    results = reader.decode(temp_file)
+    decoded_list = []
+    if results:
+        for r in results:
+            if r.get("raw") and r.get("format"):
+                decoded_list.append(f"{r['format']}: {r['raw']}")
+    return decoded_list
 
 # Camera input (works on Android browser)
 st.subheader("Scan using Camera")
@@ -25,7 +32,7 @@ camera_input = st.camera_input("Point your camera at a QR code or Barcode")
 
 if camera_input:
     img = Image.open(camera_input)
-    results = decode_barcode(img)
+    results = decode_image_with_zxing(img)
     if results:
         for res in results:
             st.success(res)
@@ -38,7 +45,7 @@ st.subheader("Or Upload an Image")
 uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
 if uploaded_file:
     img = Image.open(uploaded_file)
-    results = decode_barcode(img)
+    results = decode_image_with_zxing(img)
     if results:
         for res in results:
             st.success(res)
